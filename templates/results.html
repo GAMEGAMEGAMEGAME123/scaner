@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Отчет - Security Monkey</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="cyber-background">
+        <div class="scan-lines"></div>
+        <div class="container">
+            <header class="cyber-header">
+                <div class="monkey-logo">
+                    <div class="monkey-icon">🐵</div>
+                    <div class="shield-badge">📊</div>
+                </div>
+                <h1 class="cyber-title">ОТЧЕТ <span class="accent">СИСТЕМЫ</span></h1>
+                <div class="header-actions">
+                    <a href="/" class="back-link">← НОВЫЙ ТЕСТ</a>
+                    <form action="/download_report" method="POST" style="display:inline;">
+                        <input type="hidden" name="report_text" value="{{ results.text_report }}">
+                        <button type="submit" class="cyber-button mini">СКАЧАТЬ .TXT</button>
+                    </form>
+                </div>
+            </header>
+
+            <main class="results-area">
+                <div class="score-card cyber-card">
+                    <div class="score-circle">
+                        <div class="score-value">{{ results.score }}/100</div>
+                    </div>
+                    <div class="score-info">
+                        <h2 class="target-host">{{ results.target_url }}</h2>
+                        <p class="scan-timestamp">Статус: <span class="accent">АНАЛИЗ ЗАВЕРШЕН [{{ results.scan_mode }}]</span> | {{ results.scan_date }}</p>
+                    </div>
+                </div>
+
+                <div class="results-grid">
+                    <div class="result-section cyber-card">
+                        <h3 class="section-title">🛡 БЕЗОПАСНОСТЬ ОКРУЖЕНИЯ</h3>
+                        <div class="checks-list">
+                            <div class="check-item {{ 'passed' if results.ssl_ok else 'failed' }}">
+                                <span class="check-icon">{{ '✅' if results.ssl_ok else '❌' }}</span>
+                                <span class="check-text">SSL Сертификат</span>
+                            </div>
+                            {% for name, passed in results.checks.items() %}
+                            <div class="check-item {{ 'passed' if passed else 'failed' }}">
+                                <span class="check-icon">{{ '✅' if passed else '❌' }}</span>
+                                <span class="check-text">{{ name }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="result-section cyber-card">
+                        <h3 class="section-title">📂 СКРЫТЫЕ ПУТИ (FUZZING)</h3>
+                        <div class="checks-list">
+                            {% for file in results.files_found %}
+                            <div class="check-item failed">
+                                <span class="check-icon">⚠️</span>
+                                <span class="check-text accent">{{ file }}</span>
+                            </div>
+                            {% else %}
+                            <div class="check-item passed">
+                                <span class="check-icon">✅</span>
+                                <span class="check-text">Скрытых путей не найдено</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="result-section cyber-card vulnerability-card mt-20">
+                    <h3 class="section-title">🚨 ДЕТАЛИЗАЦИЯ УГРОЗ</h3>
+                    <div class="vulnerabilities-list">
+                        
+                        {# 1. Вывод реальных уязвимостей из сканера (SQLi, XSS и т.д.) #}
+                        {% if results.vulnerabilities %}
+                            {% for vuln in results.vulnerabilities %}
+                            <div class="vulnerability-item severity-{{ vuln.severity | lower }}">
+                                <div class="vuln-header">
+                                    <span class="vuln-type">{{ vuln.type }}</span>
+                                    <span class="vuln-severity {{ vuln.severity | lower }}">{{ vuln.severity | upper }}</span>
+                                </div>
+                                <p class="vuln-desc">{{ vuln.description }}</p>
+                            </div>
+                            {% endfor %}
+                        
+                        {# 2. Если инъекций нет, но найдены скрытые файлы #}
+                        {% elif results.files_found %}
+                            <div class="vulnerability-item severity-medium">
+                                <div class="vuln-header">
+                                    <span class="vuln-type">INFORMATION EXPOSURE</span>
+                                    <span class="vuln-severity medium">MEDIUM</span>
+                                </div>
+                                <p class="vuln-desc">Обнаружен прямой доступ к чувствительным файлам или директориям сервера через фаззинг. Это может привести к утечке исходного кода или конфигураций.</p>
+                            </div>
+
+                        {# 3. Если ничего не найдено, но оценка плохая (проблемы с заголовками/SSL) #}
+                        {% elif results.score < 60 %}
+                            <div class="vulnerability-item severity-high">
+                                <div class="vuln-header">
+                                    <span class="vuln-type">SECURITY MISCONFIGURATION</span>
+                                    <span class="vuln-severity high">HARD</span>
+                                </div>
+                                <p class="vuln-desc">Критически низкая оценка безопасности. Сайт не использует современные механизмы защиты (SSL, CSP, HSTS), что делает его уязвимым для атак перехвата трафика.</p>
+                            </div>
+
+                        {# 4. Если всё реально хорошо #}
+                        {% else %}
+                            <div class="vulnerability-item severity-low">
+                                <div class="vuln-header">
+                                    <span class="vuln-type">SYSTEM SECURE</span>
+                                    <span class="vuln-severity low">SAFE</span>
+                                </div>
+                                <p class="vuln-desc">Серьезных векторов атак не обнаружено. Рекомендуется периодический аудит при обновлении контента.</p>
+                            </div>
+                        {% endif %}
+
+                    </div>
+                </div>
+
+                <div class="cyber-card mt-20">
+                    <h3 class="section-title">📄 ТЕХНИЧЕСКИЙ ЛОГ СКАНИРОВАНИЯ</h3>
+                    <pre class="terminal-log">{{ results.text_report }}</pre>
+                </div>
+            </main>
+        </div>
+    </div>
+</body>
+</html>

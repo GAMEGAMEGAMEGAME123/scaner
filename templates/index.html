@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Monkey - Аудит безопасности</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto+Mono:wght@300;400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="cyber-background">
+        <div class="scan-lines"></div>
+        <div class="glow-effect"></div>
+        
+        <div class="container">
+            <header class="cyber-header">
+                <div class="monkey-logo">
+                    <div class="monkey-icon">🐵</div>
+                    <div class="cross-line"></div>
+                    <div class="shield-badge">🛡</div>
+                </div>
+                <h1 class="cyber-title">SECURITY <span class="accent">MONKEY</span></h1>
+                <p class="cyber-subtitle">ПРОФЕССИОНАЛЬНЫЙ АУДИТ</p>
+            </header>
+
+            <main class="scan-area">
+                <div class="terminal-window">
+                    <div class="terminal-header">
+                        <div class="terminal-buttons">
+                            <span class="terminal-btn red"></span>
+                            <span class="terminal-btn yellow"></span>
+                            <span class="terminal-btn green"></span>
+                        </div>
+                        <span class="terminal-title">security_scanner.exe</span>
+                    </div>
+                    
+                    <div class="terminal-body">
+                        <div class="scan-form-container">
+                            <h2 class="form-title">АНАЛИЗ БЕЗОПАСНОСТИ</h2>
+                            <p class="form-subtitle">Введите URL для глубокой проверки</p>
+                            
+                            <form id="scanForm" class="cyber-form">
+                                <div class="input-group" id="inputWrapper" style="flex-direction: column; gap: 15px;">
+                                    <div style="display: flex; width: 100%; gap: 10px;">
+                                        <div class="input-decoration">
+                                            <span class="input-prefix">🔗</span>
+                                        </div>
+                                        <input type="text" id="urlInput" placeholder="https://example.com" required class="cyber-input" style="flex-grow: 1;">
+                                    </div>
+
+                                    <select id="scanMode" class="cyber-input" style="background: rgba(0,0,0,0.8); color: #00ffcc; border: 1px solid #00ffcc; cursor: pointer; padding: 10px;">
+                                        <option value="standard" selected>СТАНДАРТНЫЙ АНАЛИЗ</option>
+                                        <option value="quick">БЫСТРЫЙ АНАЛИЗ</option>
+                                        <option value="deep">ГЛУБОКИЙ АНАЛИЗ</option>
+                                    </select>
+
+                                    <button type="submit" class="cyber-button" style="width: 100%;">
+                                        <span class="btn-text">ЗАПУСТИТЬ</span>
+                                        <span class="btn-glow"></span>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div id="loadingSection" class="loading-section" style="display: none;">
+                            <div class="scanning-animation">
+                                <div class="monkey-scan">
+                                    <div class="monkey-face">🐵</div>
+                                    <div class="scan-beam"></div>
+                                </div>
+                                <div class="scan-progress">
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" id="progressFill"></div>
+                                    </div>
+                                    <div class="progress-text">
+                                        <span id="currentPhaseText" class="scan-phase">Инициализация...</span>
+                                        <span class="scan-percent">0%</span>
+                                    </div>
+                                </div>
+                                <div class="terminal-output" id="terminalOutput"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+
+    <script>
+        const scanForm = document.getElementById('scanForm');
+        const urlInput = document.getElementById('urlInput');
+        const scanMode = document.getElementById('scanMode');
+        const loadingSection = document.getElementById('loadingSection');
+        const scanFormContainer = document.querySelector('.scan-form-container');
+        const terminalOutput = document.getElementById('terminalOutput');
+        const progressFill = document.getElementById('progressFill');
+        const percentText = document.querySelector('.scan-percent');
+
+        function addLog(text) {
+            const line = document.createElement('div');
+            line.className = 'output-line';
+            line.textContent = `> ${text}`;
+            terminalOutput.appendChild(line);
+            terminalOutput.scrollTop = terminalOutput.scrollHeight;
+        }
+
+        scanForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const url = urlInput.value.trim();
+            const mode = scanMode.value;
+            if (!url) return;
+
+            scanFormContainer.style.opacity = '0';
+            setTimeout(() => {
+                scanFormContainer.style.display = 'none';
+                loadingSection.style.display = 'block';
+                setTimeout(() => loadingSection.style.opacity = '1', 50);
+            }, 300);
+
+            addLog(`ЗАПРОС НА АНАЛИЗ: ${url}`);
+            addLog(`РЕЖИМ: ${mode.toUpperCase()}`);
+            addLog("ПОДКЛЮЧЕНИЕ К ЯДРУ C++");
+            progressFill.style.width = '20%';
+            percentText.textContent = '20%';
+            
+            const formData = new FormData();
+            formData.append('url', url);
+            formData.append('mode', mode);
+
+            try {
+                const response = await fetch('/scan', { method: 'POST', body: formData });
+                const data = await response.json();
+
+                if (data.error) {
+                    addLog(`КРИТИЧЕСКАЯ ОШИБКА: ${data.error}`);
+                    progressFill.style.background = '#ff0033';
+                    setTimeout(() => location.reload(), 4000);
+                } else {
+                    progressFill.style.width = '100%';
+                    percentText.textContent = '100%';
+                    addLog("АНАЛИЗ ЗАВЕРШЕН. ФОРМИРОВАНИЕ ОТЧЕТА...");
+                    
+                    sessionStorage.setItem('scanResult', JSON.stringify(data));
+                    window.location.href = `/results?scan_data=${encodeURIComponent(JSON.stringify(data))}`;
+                }
+            } catch (err) {
+                addLog("СБОЙ СВЯЗИ С СЕРВЕРОМ.");
+            }
+        });
+
+        urlInput.addEventListener('focus', () => document.getElementById('inputWrapper').classList.add('focused'));
+        urlInput.addEventListener('blur', () => {
+            if (!urlInput.value) document.getElementById('inputWrapper').classList.remove('focused');
+        });
+    </script>
+</body>
+</html>
